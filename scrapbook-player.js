@@ -564,6 +564,7 @@
       drawerWrapper.classList.add('opacity-0', 'pointer-events-none');
     }
     document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
   }
 
   function injectMobileNav() {
@@ -1245,8 +1246,8 @@
           document.removeEventListener('click', resumeOnGesture);
           document.removeEventListener('touchstart', resumeOnGesture);
         };
-        document.addEventListener('click', resumeOnGesture, { once: true });
-        document.addEventListener('touchstart', resumeOnGesture, { once: true });
+        document.addEventListener('click', resumeOnGesture, { once: true, passive: true });
+        document.addEventListener('touchstart', resumeOnGesture, { once: true, passive: true });
       }
     } catch(e) {}
   }
