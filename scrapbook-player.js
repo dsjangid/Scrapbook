@@ -278,12 +278,21 @@
     const pct = dur > 0 ? (curTime / dur) * 100 : 0;
 
     // 1. Floating bottom-right widget update
-    if (titleEl) titleEl.textContent = track.title;
-    if (subtitleEl) subtitleEl.textContent = `• ${track.artist}`;
+    if (titleEl) {
+      titleEl.textContent = track.title;
+      titleEl.classList.add('truncate', 'max-w-[105px]', 'sm:max-w-[160px]');
+    }
+    if (subtitleEl) {
+      subtitleEl.textContent = `• ${track.artist}`;
+      subtitleEl.classList.add('hidden', 'xs:inline-block', 'truncate', 'max-w-[90px]', 'sm:max-w-[130px]');
+    }
     if (icon) icon.textContent = isPlaying ? 'pause' : 'play_arrow';
     if (disc) disc.classList.toggle('animate-spin-slow', isPlaying);
     if (progressBar) progressBar.style.width = `${pct}%`;
-    if (timer) timer.textContent = dur > 0 ? `${formatTime(curTime)} / ${formatTime(dur)}` : `${formatTime(curTime)}`;
+    if (timer) {
+      timer.classList.add('whitespace-nowrap');
+      timer.textContent = dur > 0 ? `${formatTime(curTime)} / ${formatTime(dur)}` : `${formatTime(curTime)}`;
+    }
 
     // 2. Pop-up Modal updates
     const modalActiveTitle = document.getElementById('modal-active-title');
@@ -419,7 +428,7 @@
 
     const drawerWrapper = document.createElement('div');
     drawerWrapper.id = 'scrapbook-mobile-drawer';
-    drawerWrapper.className = 'fixed inset-0 z-[9995] opacity-0 pointer-events-none transition-opacity duration-300';
+    drawerWrapper.className = 'fixed inset-0 z-[9995] overflow-hidden opacity-0 pointer-events-none transition-opacity duration-300';
     
     // Detect active page based on window.location
     const rawPath = window.location.pathname.split('/').pop() || 'index.html';
