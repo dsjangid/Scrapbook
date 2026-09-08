@@ -1,6 +1,6 @@
 /**
  * Romantic Scrapbook Floating Audio Player & Interactive Playlist Modal
- * Real Audio Playback with Downloaded MP3 Tracks
+ * Seamless SPA Page Transition Router (Continuous Audio Playback across pages)
  * Handcrafted with love for Kartik's Birthday Scrapbook
  */
 (() => {
@@ -46,7 +46,7 @@
   let currentTrackIdx = 0;
   let isModalOpen = false;
 
-  // Real HTML5 Audio Element
+  // Real HTML5 Audio Element (persists in memory across SPA transitions)
   const audio = new Audio();
   audio.preload = "auto";
 
@@ -56,9 +56,22 @@
     if (savedIdx !== null && !isNaN(parseInt(savedIdx, 10))) {
       currentTrackIdx = parseInt(savedIdx, 10) % TRACKS.length;
     }
+    const savedTime = sessionStorage.getItem("kartik_scrapbook_current_time");
+    if (savedTime !== null && !isNaN(parseFloat(savedTime))) {
+      audio.currentTime = parseFloat(savedTime);
+    }
   } catch(e) {}
 
   audio.src = TRACKS[currentTrackIdx].src;
+
+  // Save playback state periodically
+  const persistAudioState = () => {
+    try {
+      sessionStorage.setItem("kartik_scrapbook_track_idx", currentTrackIdx);
+      sessionStorage.setItem("kartik_scrapbook_current_time", audio.currentTime || 0);
+      sessionStorage.setItem("kartik_scrapbook_is_playing", (!audio.paused && !audio.ended).toString());
+    } catch(e) {}
+  };
 
   const formatTime = (sec) => {
     if (isNaN(sec) || sec < 0) return "00:00";
@@ -68,16 +81,44 @@
   };
 
   // DOM Elements for Floating Widget
-  const playerButton = document.querySelector('[aria-label="Play or pause"]');
-  const floatingAside = playerButton?.closest('aside');
-  const titleEl = floatingAside?.querySelector('.font-caption-typewriter.font-bold');
-  const subtitleEl = floatingAside?.querySelector('.font-caption-typewriter.text-\\[11px\\]');
-  const icon = playerButton?.querySelector('.material-symbols-outlined');
-  const disc = floatingAside?.querySelector('.animate-spin-slow, .w-8.h-8');
-  const progressBar = floatingAside?.querySelector('.bg-secondary');
-  const timer = floatingAside?.querySelector('.text-\\[10px\\]');
-  const prevBtn = floatingAside?.querySelector('[aria-label="Previous track"]');
-  const nextBtn = floatingAside?.querySelector('[aria-label="Next track"]');
+  let floatingAside, playerButton, titleEl, subtitleEl, icon, disc, progressBar, timer, prevBtn, nextBtn;
+
+  function refreshWidgetElements() {
+    playerButton = document.querySelector('[aria-label="Play or pause"]');
+    floatingAside = playerButton?.closest('aside');
+    titleEl = floatingAside?.querySelector('.font-caption-typewriter.font-bold');
+    subtitleEl = floatingAside?.querySelector('.font-caption-typewriter.text-\\[11px\\]');
+    icon = playerButton?.querySelector('.material-symbols-outlined');
+    disc = floatingAside?.querySelector('.animate-spin-slow, .w-8.h-8');
+    progressBar = floatingAside?.querySelector('.bg-secondary');
+    timer = floatingAside?.querySelector('.text-\\[10px\\]');
+    prevBtn = floatingAside?.querySelector('[aria-label="Previous track"]');
+    nextBtn = floatingAside?.querySelector('[aria-label="Next track"]');
+
+    if (floatingAside && !floatingAside._boundClick) {
+      floatingAside._boundClick = true;
+      floatingAside.style.cursor = 'pointer';
+      floatingAside.addEventListener('click', (e) => {
+        if (e.target.closest('button[aria-label="Play or pause"]')) {
+          togglePlay();
+          return;
+        }
+        if (e.target.closest('button[aria-label="Previous track"]')) {
+          prevTrack();
+          return;
+        }
+        if (e.target.closest('button[aria-label="Next track"]')) {
+          nextTrack();
+          return;
+        }
+        if (isModalOpen) closeModal();
+        else openModal();
+      });
+      if (disc) {
+        disc.setAttribute('title', 'Click to open Soundtrack Playlist');
+      }
+    }
+  }
 
   // Inject Pop-Up Modal Styles & Elements
   function injectModal() {
@@ -216,7 +257,6 @@
     });
 
     closeBtn.addEventListener('click', closeModal);
-
     modalPlayBtn.addEventListener('click', togglePlay);
     modalPrevBtn.addEventListener('click', prevTrack);
     modalNextBtn.addEventListener('click', nextTrack);
@@ -271,6 +311,7 @@
   }
 
   function updateDisplay() {
+    refreshWidgetElements();
     const track = TRACKS[currentTrackIdx];
     const isPlaying = !audio.paused && !audio.ended && audio.currentTime > 0;
     const curTime = audio.currentTime || 0;
@@ -349,6 +390,7 @@
         }
       }
     });
+
     // Update drawer current track label if available
     const drawerTrackEl = document.getElementById('drawer-current-track');
     if (drawerTrackEl) {
@@ -358,22 +400,27 @@
 
   function loadTrack(idx, autoPlay = true) {
     currentTrackIdx = (idx + TRACKS.length) % TRACKS.length;
-    try {
-      sessionStorage.setItem("kartik_scrapbook_track_idx", currentTrackIdx);
-    } catch(e) {}
+    persistAudioState();
     audio.src = TRACKS[currentTrackIdx].src;
     audio.currentTime = 0;
     updateDisplay();
     if (autoPlay) {
-      audio.play().then(() => updateDisplay()).catch(() => updateDisplay());
+      audio.play().then(() => {
+        persistAudioState();
+        updateDisplay();
+      }).catch(() => updateDisplay());
     }
   }
 
   function togglePlay() {
     if (audio.paused) {
-      audio.play().then(() => updateDisplay()).catch(() => updateDisplay());
+      audio.play().then(() => {
+        persistAudioState();
+        updateDisplay();
+      }).catch(() => updateDisplay());
     } else {
       audio.pause();
+      persistAudioState();
       updateDisplay();
     }
   }
@@ -391,96 +438,76 @@
   }
 
   // Audio Event Listeners
-  audio.addEventListener('timeupdate', updateDisplay);
+  audio.addEventListener('timeupdate', () => {
+    updateDisplay();
+    persistAudioState();
+  });
   audio.addEventListener('loadedmetadata', updateDisplay);
-  audio.addEventListener('play', updateDisplay);
-  audio.addEventListener('pause', updateDisplay);
+  audio.addEventListener('play', () => {
+    updateDisplay();
+    persistAudioState();
+  });
+  audio.addEventListener('pause', () => {
+    updateDisplay();
+    persistAudioState();
+  });
   audio.addEventListener('ended', nextTrack);
 
-  // Bind click listeners on floating bottom-right bar
-  if (floatingAside) {
-    floatingAside.style.cursor = 'pointer';
-    floatingAside.addEventListener('click', (e) => {
-      if (e.target.closest('button[aria-label="Play or pause"]')) {
-        togglePlay();
-        return;
-      }
-      if (e.target.closest('button[aria-label="Previous track"]')) {
-        prevTrack();
-        return;
-      }
-      if (e.target.closest('button[aria-label="Next track"]')) {
-        nextTrack();
-        return;
-      }
-      if (isModalOpen) closeModal();
-      else openModal();
-    });
-
-    if (disc) {
-      disc.setAttribute('title', 'Click to open Soundtrack Playlist');
+  // Mobile Navigation Drawer System
+  const NAV_ITEMS = [
+    {
+      path: 'index.html',
+      match: ['index.html', '', 'index'],
+      title: 'Our Story',
+      chapter: 'Chapter 01',
+      icon: 'auto_stories',
+      desc: 'How it started & our journey'
+    },
+    {
+      path: 'memory-lane.html',
+      match: ['memory-lane.html', 'memory-lane'],
+      title: 'Memory Lane',
+      chapter: 'Chapter 02',
+      icon: 'photo_library',
+      desc: 'Polaroids & candid moments'
+    },
+    {
+      path: 'reasons.html',
+      match: ['reasons.html', 'reasons'],
+      title: '25 Reasons',
+      chapter: 'Chapter 03',
+      icon: 'favorite',
+      desc: 'Why I adore you so much'
+    },
+    {
+      path: 'letters.html',
+      match: ['letters.html', 'letters'],
+      title: 'Letters & Wishes',
+      chapter: 'Chapter 04',
+      icon: 'mail',
+      desc: 'Heartfelt words & memories'
+    },
+    {
+      path: 'surprise.html',
+      match: ['surprise.html', 'surprise'],
+      title: 'Birthday Surprise',
+      chapter: 'Chapter 05',
+      icon: 'redeem',
+      desc: 'A special birthday gift reveal'
     }
+  ];
+
+  function getCleanPath(urlStr = window.location.pathname) {
+    const raw = urlStr.split('/').pop().split('?')[0].split('#')[0];
+    return (raw === '' || raw === '/') ? 'index.html' : raw;
   }
 
-  // Mobile Navigation Drawer System
-  function injectMobileNav() {
-    if (document.getElementById('scrapbook-mobile-drawer')) return;
-
-    const drawerWrapper = document.createElement('div');
-    drawerWrapper.id = 'scrapbook-mobile-drawer';
-    drawerWrapper.className = 'fixed inset-0 z-[9995] overflow-hidden opacity-0 pointer-events-none transition-opacity duration-300';
-    
-    // Detect active page based on window.location
-    const rawPath = window.location.pathname.split('/').pop() || 'index.html';
-    const currentPath = rawPath === '' ? 'index.html' : rawPath;
-    
-    const navItems = [
-      {
-        path: 'index.html',
-        match: ['index.html', ''],
-        title: 'Our Story',
-        chapter: 'Chapter 01',
-        icon: 'auto_stories',
-        desc: 'How it started & our journey'
-      },
-      {
-        path: 'memory-lane.html',
-        match: ['memory-lane.html'],
-        title: 'Memory Lane',
-        chapter: 'Chapter 02',
-        icon: 'photo_library',
-        desc: 'Polaroids & candid moments'
-      },
-      {
-        path: 'reasons.html',
-        match: ['reasons.html'],
-        title: '25 Reasons',
-        chapter: 'Chapter 03',
-        icon: 'favorite',
-        desc: 'Why I adore you so much'
-      },
-      {
-        path: 'letters.html',
-        match: ['letters.html'],
-        title: 'Letters & Wishes',
-        chapter: 'Chapter 04',
-        icon: 'mail',
-        desc: 'Heartfelt words & memories'
-      },
-      {
-        path: 'surprise.html',
-        match: ['surprise.html'],
-        title: 'Birthday Surprise',
-        chapter: 'Chapter 05',
-        icon: 'redeem',
-        desc: 'A special birthday gift reveal'
-      }
-    ];
-
-    const linksHtml = navItems.map((item) => {
-      const isActive = item.match.includes(currentPath);
+  function renderDrawerNavLinks(currentPath) {
+    const cleanCurrent = getCleanPath(currentPath);
+    return NAV_ITEMS.map((item) => {
+      const isActive = item.match.includes(cleanCurrent);
       return `
-        <a href="${item.path}" class="flex items-center gap-3.5 p-3 rounded-xl transition-all duration-200 ${
+        <a href="${item.path}" class="drawer-nav-item flex items-center gap-3.5 p-3 rounded-xl transition-all duration-200 ${
           isActive 
             ? 'bg-[#6c1d28] text-white shadow-md transform translate-x-1' 
             : 'bg-[#f4eae1]/80 hover:bg-[#ede0d4] text-[#2b2320] hover:translate-x-1'
@@ -501,7 +528,51 @@
         </a>
       `;
     }).join('');
+  }
 
+  function updateActiveNavigation(url) {
+    const cleanPath = getCleanPath(url);
+
+    // 1. Update Desktop Header Navigation
+    const desktopLinks = document.querySelectorAll('header nav a');
+    desktopLinks.forEach(link => {
+      const href = getCleanPath(link.getAttribute('href') || '');
+      const isCurrent = (href === cleanPath);
+      if (isCurrent) {
+        link.setAttribute('aria-current', 'page');
+        link.className = 'uppercase px-space-md py-space-xs rounded-full transition-all bg-primary-container text-on-primary-container font-medium shadow-[0_2px_6px_rgba(78,52,46,0.12)]';
+      } else {
+        link.removeAttribute('aria-current');
+        link.className = 'font-label-caps text-label-caps uppercase px-space-md py-space-xs rounded-full text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all';
+      }
+    });
+
+    // 2. Update Mobile Drawer Links
+    const drawerNav = document.querySelector('#scrapbook-mobile-drawer nav');
+    if (drawerNav) {
+      drawerNav.innerHTML = renderDrawerNavLinks(cleanPath);
+    }
+  }
+
+  function closeMobileDrawer() {
+    const drawerWrapper = document.getElementById('scrapbook-mobile-drawer');
+    const panel = document.getElementById('scrapbook-drawer-panel');
+    if (panel) panel.classList.remove('translate-x-0');
+    if (panel) panel.classList.add('translate-x-full');
+    if (drawerWrapper) {
+      drawerWrapper.classList.remove('opacity-100', 'pointer-events-auto');
+      drawerWrapper.classList.add('opacity-0', 'pointer-events-none');
+    }
+    document.body.style.overflow = '';
+  }
+
+  function injectMobileNav() {
+    if (document.getElementById('scrapbook-mobile-drawer')) return;
+
+    const drawerWrapper = document.createElement('div');
+    drawerWrapper.id = 'scrapbook-mobile-drawer';
+    drawerWrapper.className = 'fixed inset-0 z-[9995] overflow-hidden opacity-0 pointer-events-none transition-opacity duration-300';
+    
     drawerWrapper.innerHTML = `
       <!-- Backdrop Overlay -->
       <div id="scrapbook-drawer-backdrop" class="absolute inset-0 bg-[#2b2320]/60 backdrop-blur-xs transition-opacity cursor-pointer"></div>
@@ -535,7 +606,7 @@
 
         <!-- Navigation Chapter Links -->
         <nav class="flex flex-col gap-2.5 my-3">
-          ${linksHtml}
+          ${renderDrawerNavLinks(window.location.pathname)}
         </nav>
 
         <!-- Bottom Actions & Footer -->
@@ -578,47 +649,617 @@
       document.body.style.overflow = 'hidden';
     }
 
-    function closeDrawer() {
-      panel.classList.remove('translate-x-0');
-      panel.classList.add('translate-x-full');
-      drawerWrapper.classList.remove('opacity-100', 'pointer-events-auto');
-      drawerWrapper.classList.add('opacity-0', 'pointer-events-none');
-      document.body.style.overflow = '';
-    }
-
-    backdrop?.addEventListener('click', closeDrawer);
-    closeBtn?.addEventListener('click', closeDrawer);
+    backdrop?.addEventListener('click', closeMobileDrawer);
+    closeBtn?.addEventListener('click', closeMobileDrawer);
 
     soundtrackBtn?.addEventListener('click', () => {
-      closeDrawer();
+      closeMobileDrawer();
       setTimeout(openModal, 200);
     });
 
     // Close on Escape key
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !drawerWrapper.classList.contains('pointer-events-none')) {
-        closeDrawer();
+        closeMobileDrawer();
       }
     });
 
     // Attach listener to mobile menu toggle buttons
-    function bindMenuToggles() {
-      document.querySelectorAll('#mobile-menu-toggle, [data-action="open-mobile-menu"]').forEach(btn => {
-        btn.onclick = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          openDrawer();
-        };
-      });
-    }
-
-    bindMenuToggles();
+    document.addEventListener('click', (e) => {
+      const toggle = e.target.closest('#mobile-menu-toggle, [data-action="open-mobile-menu"]');
+      if (toggle) {
+        e.preventDefault();
+        e.stopPropagation();
+        openDrawer();
+      }
+    });
   }
 
-  // Setup DOM injection on DOM ready
+  // ==========================================
+  // PAGE INTERACTION HANDLERS (for all 5 pages)
+  // ==========================================
+  let activeVoiceInterval = null;
+  let activeVoiceAudioCtx = null;
+  let activeWhisperInterval = null;
+
+  function initPageFeatures() {
+    const path = getCleanPath();
+
+    // 1. INDEX.HTML: Birthday Wish Box
+    const wishBtn = document.getElementById('make-wish-btn');
+    const wishResult = document.getElementById('wish-result');
+    const wishPrompt = document.getElementById('wish-prompt');
+    const wishBtnText = document.getElementById('wish-btn-text');
+
+    if (wishBtn && wishResult) {
+      wishBtn.onclick = function() {
+        wishResult.classList.remove('hidden');
+        if (wishPrompt) wishPrompt.textContent = "Candles blown with all my heart!";
+        if (wishBtnText) wishBtnText.textContent = "Wish Granted ♥";
+        wishBtn.disabled = true;
+        wishBtn.classList.add('opacity-75', 'cursor-default');
+      };
+    }
+
+    // 2. MEMORY-LANE.HTML: Filter tabs & Shuffle tilt & Modal
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const memoryCards = document.querySelectorAll('.memory-card');
+
+    filterBtns.forEach(btn => {
+      btn.onclick = () => {
+        filterBtns.forEach(b => {
+          b.classList.remove('bg-primary', 'text-on-primary');
+          b.classList.add('bg-surface-container', 'text-on-surface-variant');
+        });
+        btn.classList.remove('bg-surface-container', 'text-on-surface-variant');
+        btn.classList.add('bg-primary', 'text-on-primary');
+
+        const filter = btn.getAttribute('data-filter');
+        memoryCards.forEach(card => {
+          const cat = card.getAttribute('data-category');
+          if (filter === 'all' || cat === filter) {
+            card.style.display = 'block';
+            card.style.opacity = '1';
+          } else {
+            card.style.opacity = '0';
+            setTimeout(() => {
+              if (btn.getAttribute('data-filter') !== 'all' && cat !== filter) {
+                card.style.display = 'none';
+              }
+            }, 200);
+          }
+        });
+      };
+    });
+
+    const shuffleBtn = document.getElementById('shuffle-btn');
+    const tilts = ['-rotate-3', 'rotate-2', '-rotate-2', 'rotate-3', '-rotate-1', 'rotate-1', 'rotate-0'];
+    if (shuffleBtn) {
+      shuffleBtn.onclick = () => {
+        memoryCards.forEach(card => {
+          tilts.forEach(t => card.classList.remove(t));
+          const randomTilt = tilts[Math.floor(Math.random() * tilts.length)];
+          card.classList.add(randomTilt);
+        });
+      };
+    }
+
+    const memModal = document.getElementById('memory-modal');
+    const openModalBtn = document.getElementById('open-memory-modal');
+    const closeModalBtn = document.getElementById('close-modal');
+    const cancelModalBtn = document.getElementById('cancel-modal');
+
+    if (openModalBtn && memModal) {
+      openModalBtn.onclick = () => memModal.classList.remove('hidden');
+    }
+    if (closeModalBtn && memModal) {
+      closeModalBtn.onclick = () => memModal.classList.add('hidden');
+    }
+    if (cancelModalBtn && memModal) {
+      cancelModalBtn.onclick = () => memModal.classList.add('hidden');
+    }
+
+    // 3. REASONS.HTML: Functions on window
+    let revealedSet = new Set();
+    window.revealSecret = function(el) {
+      const cover = el.querySelector('.reveal-cover');
+      if (cover) {
+        cover.classList.add('opacity-0', 'pointer-events-none');
+        revealedSet.add(Math.random());
+        const counter = document.getElementById('opened-counter');
+        if (counter) {
+          counter.textContent = Math.min(25, revealedSet.size);
+        }
+      }
+    };
+
+    window.toggleLove = function(btn) {
+      const icon = btn.querySelector('.material-symbols-outlined');
+      const tag = btn.querySelector('.love-tag');
+      if (icon.textContent === 'favorite') {
+        icon.textContent = 'favorite_border';
+        tag.textContent = 'pinned';
+        btn.classList.remove('text-secondary');
+        btn.classList.add('text-outline');
+      } else {
+        icon.textContent = 'favorite';
+        tag.textContent = 'cherished';
+        btn.classList.remove('text-outline');
+        btn.classList.add('text-secondary');
+      }
+    };
+
+    window.filterItems = function(category) {
+      const buttons = document.querySelectorAll('.category-btn');
+      buttons.forEach(b => {
+        b.classList.remove('bg-primary', 'text-on-primary');
+        b.classList.add('bg-surface-container', 'text-on-surface');
+      });
+      if (window.event && window.event.target) {
+        window.event.target.classList.remove('bg-surface-container', 'text-on-surface');
+        window.event.target.classList.add('bg-primary', 'text-on-primary');
+      }
+
+      const cards = document.querySelectorAll('.memory-card');
+      cards.forEach(card => {
+        const cats = card.getAttribute('data-category') || '';
+        if (category === 'all' || cats.includes(category)) {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    };
+
+    window.openAllNotes = function() {
+      const covers = document.querySelectorAll('.reveal-cover');
+      covers.forEach(c => c.classList.add('opacity-0', 'pointer-events-none'));
+      const counter = document.getElementById('opened-counter');
+      if (counter) counter.textContent = '25';
+    };
+
+    window.handleMemorySubmit = function(e) {
+      e.preventDefault();
+      const textarea = document.getElementById('new-reason');
+      const text = textarea?.value.trim();
+      if (!text) return;
+
+      const grid = document.getElementById('scrapbook-grid');
+      const newCard = document.createElement('div');
+      newCard.className = 'memory-card relative bg-surface-container-lowest p-space-lg shadow-xl rotate-1 transition-all duration-300 rounded-sm';
+      newCard.innerHTML = `
+        <div class="absolute -top-3 left-6 w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-on-secondary shadow-sm">
+          <span class="material-symbols-outlined text-[13px]">favorite</span>
+        </div>
+        <div class="flex items-center justify-between mb-space-sm pt-2">
+          <span class="font-label-caps text-label-caps uppercase text-secondary tracking-widest bg-secondary-fixed/40 px-2 py-0.5 rounded-sm">No. 26 • Just Added</span>
+          <span class="material-symbols-outlined text-outline text-[18px]">auto_awesome</span>
+        </div>
+        <h2 class="font-headline-md text-[20px] leading-tight text-primary mb-space-xs font-serif">Handwritten Note for Kartik</h2>
+        <p class="font-body-md text-body-md text-on-surface leading-relaxed">${text}</p>
+        <div class="mt-space-md pt-space-xs text-outline text-body-sm font-caption-typewriter flex items-center justify-between">
+          <span class="text-secondary font-bold">pinned just now</span>
+          <span>sealed with a kiss</span>
+        </div>
+      `;
+      grid.prepend(newCard);
+      textarea.value = '';
+      
+      const success = document.getElementById('submission-success');
+      if (success) {
+        success.classList.remove('hidden');
+        setTimeout(() => success.classList.add('hidden'), 4000);
+      }
+    };
+
+    // 4. LETTERS.HTML: Cassette Voice Note & Guestbook
+    let isVoicePlaying = false;
+    let voiceElapsed = 0;
+    const voiceTotalDuration = 134;
+
+    function initVoiceAudio() {
+      if (!activeVoiceAudioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) activeVoiceAudioCtx = new AudioContext();
+      }
+      if (activeVoiceAudioCtx && activeVoiceAudioCtx.state === 'suspended') {
+        activeVoiceAudioCtx.resume();
+      }
+    }
+
+    const voiceNotes = [329.63, 392.00, 440.00, 493.88, 523.25, 587.33];
+    function playWhisperTone() {
+      if (!activeVoiceAudioCtx || !isVoicePlaying) return;
+      try {
+        const osc = activeVoiceAudioCtx.createOscillator();
+        const gain = activeVoiceAudioCtx.createGain();
+        const note = voiceNotes[Math.floor(Math.random() * voiceNotes.length)];
+        
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(note, activeVoiceAudioCtx.currentTime);
+        
+        gain.gain.setValueAtTime(0.001, activeVoiceAudioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.02, activeVoiceAudioCtx.currentTime + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.0001, activeVoiceAudioCtx.currentTime + 1.6);
+        
+        osc.connect(gain);
+        gain.connect(activeVoiceAudioCtx.destination);
+        
+        osc.start();
+        osc.stop(activeVoiceAudioCtx.currentTime + 1.7);
+      } catch(e) {}
+    }
+
+    function updateVoiceDisplay() {
+      const playIcon = document.getElementById('cassette-play-icon');
+      const playerStatus = document.getElementById('cassette-status');
+      const reelLeft = document.getElementById('reel-left');
+      const reelRight = document.getElementById('reel-right');
+      const progressBar = document.getElementById('audio-progress-bar');
+      const timerDisplay = document.getElementById('audio-timer');
+      const waveformBars = document.querySelectorAll('#cassette-player .waveform-bar');
+
+      if (playIcon) playIcon.textContent = isVoicePlaying ? 'pause' : 'play_arrow';
+      if (playerStatus) playerStatus.textContent = isVoicePlaying ? 'Playing voice note... ♡' : 'Press play to listen';
+
+      if (reelLeft) reelLeft.classList.toggle('animate-spin-slow', isVoicePlaying);
+      if (reelRight) reelRight.classList.toggle('animate-spin-slow', isVoicePlaying);
+
+      if (progressBar) progressBar.style.width = `${(voiceElapsed / voiceTotalDuration) * 100}%`;
+      if (timerDisplay) timerDisplay.textContent = `${formatTime(voiceElapsed)} / 02:14`;
+
+      if (isVoicePlaying) {
+        waveformBars.forEach((bar, i) => {
+          const randomHeight = Math.floor(Math.sin(Date.now() / 200 + i) * 10 + 16);
+          bar.style.height = `${Math.max(4, Math.min(30, randomHeight))}px`;
+        });
+      } else {
+        const baseHeights = [12, 24, 16, 32, 20, 28, 12, 24, 16, 28, 8];
+        waveformBars.forEach((bar, i) => {
+          bar.style.height = `${baseHeights[i % baseHeights.length]}px`;
+        });
+      }
+    }
+
+    window.toggleVoiceNote = function() {
+      if (isVoicePlaying) {
+        isVoicePlaying = false;
+        if (activeVoiceInterval) { clearInterval(activeVoiceInterval); activeVoiceInterval = null; }
+        if (activeWhisperInterval) { clearInterval(activeWhisperInterval); activeWhisperInterval = null; }
+        updateVoiceDisplay();
+      } else {
+        initVoiceAudio();
+        isVoicePlaying = true;
+        updateVoiceDisplay();
+        if (!activeVoiceInterval) {
+          activeVoiceInterval = setInterval(() => {
+            voiceElapsed += 1;
+            if (voiceElapsed >= voiceTotalDuration) {
+              voiceElapsed = 0;
+              window.toggleVoiceNote();
+            } else {
+              updateVoiceDisplay();
+            }
+          }, 1000);
+        }
+        if (!activeWhisperInterval) {
+          activeWhisperInterval = setInterval(playWhisperTone, 1100);
+        }
+      }
+    };
+
+    window.seekVoiceNote = function(e) {
+      const container = document.getElementById('progress-container');
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      voiceElapsed = Math.floor(voiceTotalDuration * percent);
+      updateVoiceDisplay();
+    };
+
+    window.handleReplySubmit = function() {
+      const input = document.getElementById('reply-input');
+      const wall = document.getElementById('sticky-notes-wall');
+      if (!input || !wall) return;
+      const text = input.value.trim();
+
+      if (text) {
+        const noteDiv = document.createElement('div');
+        noteDiv.className = 'bg-secondary-fixed/40 p-space-xs rounded-sm border-l-2 border-primary font-caption-typewriter text-body-sm text-on-surface flex flex-col gap-0.5 animate-pulse';
+        noteDiv.innerHTML = `
+          <div class="flex items-center justify-between text-[10px] text-primary">
+            <span class="font-bold">Kartik</span>
+            <span>A few seconds ago</span>
+          </div>
+          <p class="italic">"${text}"</p>
+        `;
+        wall.prepend(noteDiv);
+        input.value = '';
+        setTimeout(() => {
+          noteDiv.classList.remove('animate-pulse');
+        }, 600);
+      }
+    };
+
+    updateVoiceDisplay();
+
+    // 5. SURPRISE.HTML: Candles, Confetti, Coupons, Wishes
+    window.toggleSingleCandle = function(candleEl) {
+      const flame = candleEl.querySelector('.flame-element');
+      if (!flame) return;
+      if (flame.style.opacity === '0') {
+        flame.style.opacity = '1';
+        flame.style.transform = 'scale(1)';
+      } else {
+        flame.style.opacity = '0';
+        flame.style.transform = 'scale(0.2)';
+      }
+    };
+
+    window.blowCandles = function() {
+      const flames = document.querySelectorAll('.flame-element');
+      flames.forEach((flame, index) => {
+        setTimeout(() => {
+          flame.style.opacity = '0';
+          flame.style.transform = 'scale(0.1)';
+        }, index * 120);
+      });
+
+      const banner = document.getElementById('wish-banner');
+      if (banner) {
+        setTimeout(() => {
+          banner.style.maxHeight = '200px';
+          banner.style.opacity = '1';
+          window.launchConfettiBurst();
+        }, 500);
+      }
+    };
+
+    window.relightCandles = function() {
+      const flames = document.querySelectorAll('.flame-element');
+      flames.forEach((flame, index) => {
+        setTimeout(() => {
+          flame.style.opacity = '1';
+          flame.style.transform = 'scale(1)';
+        }, index * 100);
+      });
+
+      const banner = document.getElementById('wish-banner');
+      if (banner) {
+        banner.style.opacity = '0';
+        banner.style.maxHeight = '0px';
+      }
+    };
+
+    window.revealCoupon = function(targetId, code, btn) {
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.textContent = 'CODE: ' + code;
+        el.classList.add('text-secondary', 'underline');
+      }
+      if (btn) {
+        btn.textContent = 'Claimed!';
+        btn.classList.add('bg-secondary', 'opacity-90', 'cursor-default');
+        btn.onclick = null;
+      }
+      window.launchConfettiBurst();
+    };
+
+    window.submitCapsuleWish = function() {
+      const input = document.getElementById('wish-input');
+      const feedback = document.getElementById('capsule-feedback');
+      if (input && input.value.trim() !== '') {
+        input.value = '';
+        if (feedback) feedback.classList.remove('hidden');
+        setTimeout(() => {
+          if (feedback) feedback.classList.add('hidden');
+        }, 4000);
+      }
+    };
+
+    window.launchConfettiBurst = function() {
+      const canvas = document.getElementById('confetti-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const colors = ['#fe997a', '#ffdad6', '#6c1d28', '#ffdada', '#97472e', '#f0bab0'];
+      const particles = [];
+      for (let i = 0; i < 75; i++) {
+        particles.push({
+          x: canvas.width / 2 + (Math.random() * 200 - 100),
+          y: canvas.height / 2 + (Math.random() * 100 - 50),
+          vx: (Math.random() - 0.5) * 14,
+          vy: (Math.random() - 1.2) * 12,
+          size: Math.random() * 7 + 4,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: Math.random() * 360,
+          rSpeed: (Math.random() - 0.5) * 10,
+          opacity: 1
+        });
+      }
+
+      let frames = 0;
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach((p) => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.28;
+          p.rotation += p.rSpeed;
+          p.opacity -= 0.012;
+
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, p.opacity);
+          ctx.translate(p.x, p.y);
+          ctx.rotate((p.rotation * Math.PI) / 180);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+          ctx.restore();
+        });
+
+        frames++;
+        if (frames < 90) {
+          requestAnimationFrame(animate);
+        } else {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+      requestAnimationFrame(animate);
+    };
+  }
+
+  // =======================================================
+  // SEAMLESS SPA NAVIGATION ROUTER (Continuous Audio Playback)
+  // =======================================================
+  let isTransitioning = false;
+
+  async function navigateTo(url, pushHistory = true) {
+    if (isTransitioning) return;
+    const targetPath = getCleanPath(url);
+    const currentPath = getCleanPath(window.location.pathname);
+
+    // If clicking on same page with no hash, just close drawer and scroll top
+    if (targetPath === currentPath && !url.includes('#')) {
+      closeMobileDrawer();
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+      return;
+    }
+
+    isTransitioning = true;
+    closeMobileDrawer();
+
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.style.transition = 'opacity 150ms ease, transform 150ms ease';
+      mainEl.style.opacity = '0';
+      mainEl.style.transform = 'translateY(4px)';
+    }
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        window.location.href = url;
+        return;
+      }
+      const htmlText = await response.text();
+      const parser = new DOMParser();
+      const newDoc = parser.parseFromString(htmlText, 'text/html');
+
+      // Update Document Title
+      if (newDoc.title) {
+        document.title = newDoc.title;
+      }
+
+      // Replace <main> Content
+      const newMain = newDoc.querySelector('main');
+      if (mainEl && newMain) {
+        mainEl.innerHTML = newMain.innerHTML;
+      }
+
+      // Update Active Navigation States
+      updateActiveNavigation(url);
+
+      // Push history state if needed
+      if (pushHistory) {
+        window.history.pushState({ scrapbookUrl: url }, '', url);
+      }
+
+      // Scroll to top
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+
+      // Clean up any running intervals from previous page
+      if (activeVoiceInterval) { clearInterval(activeVoiceInterval); activeVoiceInterval = null; }
+      if (activeWhisperInterval) { clearInterval(activeWhisperInterval); activeWhisperInterval = null; }
+
+      // Re-initialize interactive features for the new page
+      initPageFeatures();
+
+      // Refresh Audio Player widget bindings in the new DOM if needed
+      refreshWidgetElements();
+      updateDisplay();
+
+    } catch (err) {
+      console.warn('SPA Navigation fallback:', err);
+      window.location.href = url;
+      return;
+    } finally {
+      setTimeout(() => {
+        if (mainEl) {
+          mainEl.style.opacity = '1';
+          mainEl.style.transform = 'translateY(0)';
+        }
+        isTransitioning = false;
+      }, 50);
+    }
+  }
+
+  // Intercept click on internal links
+  function setupLinkInterception() {
+    document.addEventListener('click', (e) => {
+      const link = e.target.closest('a');
+      if (!link) return;
+
+      const href = link.getAttribute('href');
+      if (!href) return;
+
+      // Ignore external links, mailto, tel, javascript, hash-only
+      if (
+        href.startsWith('http://') ||
+        href.startsWith('https://') ||
+        href.startsWith('mailto:') ||
+        href.startsWith('tel:') ||
+        href.startsWith('javascript:') ||
+        href.startsWith('#') ||
+        link.getAttribute('target') === '_blank'
+      ) {
+        return;
+      }
+
+      // Check if link points to one of our scrapbook pages
+      const cleanTarget = getCleanPath(href);
+      const isKnownPage = NAV_ITEMS.some(item => item.match.includes(cleanTarget));
+
+      if (isKnownPage || href.endsWith('.html') || href === '/' || href === './') {
+        e.preventDefault();
+        navigateTo(href, true);
+      }
+    });
+
+    // Handle browser back / forward buttons
+    window.addEventListener('popstate', () => {
+      navigateTo(window.location.href, false);
+    });
+  }
+
+  // Auto-resume audio on first user touch if previously playing (handles browser policy)
+  function setupAutoplayResumer() {
+    try {
+      const wasPlaying = sessionStorage.getItem("kartik_scrapbook_is_playing") === "true";
+      if (wasPlaying && audio.paused) {
+        const resumeOnGesture = () => {
+          if (audio.paused) {
+            audio.play().catch(() => {});
+          }
+          document.removeEventListener('click', resumeOnGesture);
+          document.removeEventListener('touchstart', resumeOnGesture);
+        };
+        document.addEventListener('click', resumeOnGesture, { once: true });
+        document.addEventListener('touchstart', resumeOnGesture, { once: true });
+      }
+    } catch(e) {}
+  }
+
+  // Setup DOM on load
   const initScrapbook = () => {
     injectModal();
     injectMobileNav();
+    refreshWidgetElements();
+    updateDisplay();
+    initPageFeatures();
+    setupLinkInterception();
+    setupAutoplayResumer();
   };
 
   if (document.readyState === 'loading') {
@@ -627,7 +1268,7 @@
     initScrapbook();
   }
 
-  // Global methods
+  // Global Audio API
   window.scrapbookAudio = {
     togglePlay,
     nextTrack,
@@ -640,5 +1281,4 @@
     isPlaying: () => !audio.paused && !audio.ended && audio.currentTime > 0
   };
 
-  updateDisplay();
 })();
