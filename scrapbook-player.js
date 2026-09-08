@@ -340,6 +340,11 @@
         }
       }
     });
+    // Update drawer current track label if available
+    const drawerTrackEl = document.getElementById('drawer-current-track');
+    if (drawerTrackEl) {
+      drawerTrackEl.textContent = `${isPlaying ? 'Playing: ' : 'Track: '}${track.title} • ${track.artist}`;
+    }
   }
 
   function loadTrack(idx, autoPlay = true) {
@@ -408,11 +413,209 @@
     }
   }
 
+  // Mobile Navigation Drawer System
+  function injectMobileNav() {
+    if (document.getElementById('scrapbook-mobile-drawer')) return;
+
+    const drawerWrapper = document.createElement('div');
+    drawerWrapper.id = 'scrapbook-mobile-drawer';
+    drawerWrapper.className = 'fixed inset-0 z-[9995] opacity-0 pointer-events-none transition-opacity duration-300';
+    
+    // Detect active page based on window.location
+    const rawPath = window.location.pathname.split('/').pop() || 'index.html';
+    const currentPath = rawPath === '' ? 'index.html' : rawPath;
+    
+    const navItems = [
+      {
+        path: 'index.html',
+        match: ['index.html', ''],
+        title: 'Our Story',
+        chapter: 'Chapter 01',
+        icon: 'auto_stories',
+        desc: 'How it started & our journey'
+      },
+      {
+        path: 'memory-lane.html',
+        match: ['memory-lane.html'],
+        title: 'Memory Lane',
+        chapter: 'Chapter 02',
+        icon: 'photo_library',
+        desc: 'Polaroids & candid moments'
+      },
+      {
+        path: 'reasons.html',
+        match: ['reasons.html'],
+        title: '25 Reasons',
+        chapter: 'Chapter 03',
+        icon: 'favorite',
+        desc: 'Why I adore you so much'
+      },
+      {
+        path: 'letters.html',
+        match: ['letters.html'],
+        title: 'Letters & Wishes',
+        chapter: 'Chapter 04',
+        icon: 'mail',
+        desc: 'Heartfelt words & memories'
+      },
+      {
+        path: 'surprise.html',
+        match: ['surprise.html'],
+        title: 'Birthday Surprise',
+        chapter: 'Chapter 05',
+        icon: 'redeem',
+        desc: 'A special birthday gift reveal'
+      }
+    ];
+
+    const linksHtml = navItems.map((item) => {
+      const isActive = item.match.includes(currentPath);
+      return `
+        <a href="${item.path}" class="flex items-center gap-3.5 p-3 rounded-xl transition-all duration-200 ${
+          isActive 
+            ? 'bg-[#6c1d28] text-white shadow-md transform translate-x-1' 
+            : 'bg-[#f4eae1]/80 hover:bg-[#ede0d4] text-[#2b2320] hover:translate-x-1'
+        }">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+            isActive ? 'bg-[#97472e] text-white' : 'bg-[#e4ba9c]/40 text-[#97472e]'
+          }">
+            <span class="material-symbols-outlined text-[20px]">${item.icon}</span>
+          </div>
+          <div class="flex flex-col min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] uppercase font-mono tracking-widest ${isActive ? 'text-[#f5b8c0]' : 'text-[#885217]'}">${item.chapter}</span>
+              ${isActive ? '<span class="text-[9px] bg-[#97472e] text-white px-1.5 py-0.2 rounded-full font-mono">CURRENT</span>' : ''}
+            </div>
+            <span class="font-serif font-medium text-[15px] leading-snug truncate ${isActive ? 'text-white' : 'text-[#2b2320]'}">${item.title}</span>
+            <span class="text-[11px] font-mono leading-tight truncate ${isActive ? 'text-[#f1ccd2]' : 'text-[#735a39]'}">${item.desc}</span>
+          </div>
+        </a>
+      `;
+    }).join('');
+
+    drawerWrapper.innerHTML = `
+      <!-- Backdrop Overlay -->
+      <div id="scrapbook-drawer-backdrop" class="absolute inset-0 bg-[#2b2320]/60 backdrop-blur-xs transition-opacity cursor-pointer"></div>
+
+      <!-- Slide Panel -->
+      <div id="scrapbook-drawer-panel" class="absolute top-0 right-0 h-full w-[85%] max-w-[340px] bg-[#fcf8f4] text-[#2b2320] shadow-2xl border-l border-[#e4d6cc] flex flex-col justify-between p-5 transform translate-x-full transition-transform duration-300 ease-out z-10 overflow-y-auto">
+        
+        <!-- Header -->
+        <div class="flex flex-col gap-3">
+          <div class="flex items-center justify-between border-b border-[#e9ded5] pb-3.5">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-full bg-[#97472e] flex items-center justify-center text-white shadow-xs">
+                <span class="material-symbols-outlined text-[17px]">auto_stories</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="font-serif text-[17px] font-semibold text-[#4e0514] leading-tight">Our Scrapbook</span>
+                <span class="text-[11px] font-mono text-[#735a39] tracking-wider">vol. xvii • birthday edition</span>
+              </div>
+            </div>
+            <button id="scrapbook-drawer-close" aria-label="Close menu" class="w-8 h-8 rounded-full hover:bg-[#ebdcd1] flex items-center justify-center text-[#5c3e32] transition-colors cursor-pointer">
+              <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
+
+          <!-- Washi Tape Decor & Chapter count -->
+          <div class="flex items-center justify-between px-1">
+            <span class="text-[10px] font-mono uppercase tracking-widest text-[#885217]">Table of Contents</span>
+            <span class="text-[10px] font-mono bg-[#e4ba9c]/40 text-[#5c3e32] px-2 py-0.5 rounded-sm">5 Chapters</span>
+          </div>
+        </div>
+
+        <!-- Navigation Chapter Links -->
+        <nav class="flex flex-col gap-2.5 my-3">
+          ${linksHtml}
+        </nav>
+
+        <!-- Bottom Actions & Footer -->
+        <div class="flex flex-col gap-2.5 pt-3 border-t border-[#e9ded5]">
+          <!-- Soundtrack Quick Launcher -->
+          <button id="drawer-soundtrack-btn" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-[#e4ba9c]/25 hover:bg-[#e4ba9c]/40 text-[#5c3e32] border border-[#e4ba9c]/50 transition-colors cursor-pointer text-left">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="material-symbols-outlined text-[#97472e] text-[18px]">music_note</span>
+              <div class="flex flex-col min-w-0">
+                <span class="text-[12px] font-medium leading-none">Scrapbook Soundtrack</span>
+                <span class="text-[10px] font-mono text-[#735a39] truncate" id="drawer-current-track">Playing: ${TRACKS[currentTrackIdx].title} • ${TRACKS[currentTrackIdx].artist}</span>
+              </div>
+            </div>
+            <span class="material-symbols-outlined text-[18px] text-[#97472e]">play_circle</span>
+          </button>
+
+          <!-- Romantic Footer Stamp -->
+          <div class="text-center py-1">
+            <p class="text-[10px] font-mono text-[#735a39]">
+              ♥ Handcrafted with all my love for Kartik • by Kanika
+            </p>
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    document.body.appendChild(drawerWrapper);
+
+    const backdrop = document.getElementById('scrapbook-drawer-backdrop');
+    const panel = document.getElementById('scrapbook-drawer-panel');
+    const closeBtn = document.getElementById('scrapbook-drawer-close');
+    const soundtrackBtn = document.getElementById('drawer-soundtrack-btn');
+
+    function openDrawer() {
+      drawerWrapper.classList.remove('opacity-0', 'pointer-events-none');
+      drawerWrapper.classList.add('opacity-100', 'pointer-events-auto');
+      panel.classList.remove('translate-x-full');
+      panel.classList.add('translate-x-0');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeDrawer() {
+      panel.classList.remove('translate-x-0');
+      panel.classList.add('translate-x-full');
+      drawerWrapper.classList.remove('opacity-100', 'pointer-events-auto');
+      drawerWrapper.classList.add('opacity-0', 'pointer-events-none');
+      document.body.style.overflow = '';
+    }
+
+    backdrop?.addEventListener('click', closeDrawer);
+    closeBtn?.addEventListener('click', closeDrawer);
+
+    soundtrackBtn?.addEventListener('click', () => {
+      closeDrawer();
+      setTimeout(openModal, 200);
+    });
+
+    // Close on Escape key
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !drawerWrapper.classList.contains('pointer-events-none')) {
+        closeDrawer();
+      }
+    });
+
+    // Attach listener to mobile menu toggle buttons
+    function bindMenuToggles() {
+      document.querySelectorAll('#mobile-menu-toggle, [data-action="open-mobile-menu"]').forEach(btn => {
+        btn.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openDrawer();
+        };
+      });
+    }
+
+    bindMenuToggles();
+  }
+
   // Setup DOM injection on DOM ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', injectModal);
-  } else {
+  const initScrapbook = () => {
     injectModal();
+    injectMobileNav();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initScrapbook);
+  } else {
+    initScrapbook();
   }
 
   // Global methods
