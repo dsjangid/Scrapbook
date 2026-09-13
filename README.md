@@ -46,10 +46,23 @@ kartik-scrapbook-app/
 
 ---
 
-## 🍏 2. How to Install on iPhone (iOS)
+## 🍏 2. How to Build & Install on iPhone (iOS)
 
+### Option A: Automated Cloud Build via GitHub (Easiest)
+1. Push your changes to GitHub (branch `mobile-app` or `main`).
+2. Go to the **Actions** tab on GitHub (`dsjangid/Scrapbook`).
+3. The **"Build iOS App (IPA)"** workflow will automatically compile the iOS app in the cloud using macOS runners.
+4. Download the **`Kartik-Scrapbook-iOS`** artifact which contains `Kartik-Scrapbook-iOS.ipa`.
+5. Install the `.ipa` onto any iPhone using:
+   - **[Sideloadly](https://sideloadly.io/)** (Free Mac/Windows app — plug in iPhone and drag-and-drop the `.ipa`)
+   - **AltStore** / **Scarlet** / **TrollStore** / **GBox**
+   - Or direct Xcode Devices installation (`Window > Devices and Simulators > Installed Apps`).
+
+---
+
+### Option B: Local Run via Xcode
 1. Open **Xcode** on your Mac.
-2. Select **Open a Project or File** and choose `/Users/meydivyansh/Desktop/Bday/kartik-scrapbook-app/ios/App/App.xcworkspace` (or `App.xcodeproj`).
+2. Select **Open a Project or File** and choose `/Users/meydivyansh/Desktop/Bday/kartik-scrapbook-app/ios/App/App.xcodeproj`.
 3. Connect Kartik's (or your) iPhone via USB cable to the Mac.
 4. Select the connected iPhone in Xcode's target device bar.
 5. Click the **Play / Run (▶)** button.
@@ -61,3 +74,4 @@ kartik-scrapbook-app/
 - 📦 **100% Offline Support:** All photos, music tracks, voice notes, and short film are bundled directly into the app bundle.
 - 🎨 **Custom App Icon:** High-resolution launcher icons across all standard Android & iOS densities.
 - 🎵 **Native Media Playback:** Hardware-accelerated audio/video playback and continuous soundtrack.
+
