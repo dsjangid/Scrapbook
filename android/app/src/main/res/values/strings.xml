@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Our Scrapbook</string>
+    <string name="title_activity_main">Our Scrapbook</string>
+    <string name="package_name">com.kanika.kartikscrapbook</string>
+    <string name="custom_url_scheme">com.kanika.kartikscrapbook</string>
+</resources>
