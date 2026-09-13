@@ -325,7 +325,7 @@
 </div>
 <!-- Tape Window Center Waveform & Track Title -->
 <div class="flex flex-col items-center justify-center gap-1 z-10 w-full max-w-xs px-2 text-center">
-<span class="font-caption-typewriter text-[11px] text-tertiary-fixed tracking-widest uppercase font-semibold">Acoustic Whisper Voice Note</span>
+<span class="font-caption-typewriter text-[11px] text-tertiary-fixed tracking-widest uppercase font-semibold">Voice Note • Kanika to Kartik</span>
 <!-- SVG Audio Waveform -->
 <div class="w-full h-8 flex items-center justify-center gap-1">
 <span class="w-1 bg-secondary rounded-full h-3 transition-all duration-300 waveform-bar"></span>
@@ -350,22 +350,34 @@
 </div>
 <!-- Player Controls & Interactive Timeline -->
 <div class="flex flex-col sm:flex-row items-center justify-between gap-space-sm pt-space-xs">
-<div class="flex items-center gap-space-sm">
+<div class="flex items-center gap-1.5">
+<!-- Skip Back 10s -->
+<button aria-label="Skip back 10 seconds" class="w-8 h-8 rounded-full flex items-center justify-center text-primary/80 hover:text-primary hover:bg-surface-container-highest active:scale-95 transition-all cursor-pointer" onclick="skipVoiceNote(-10)" title="Rewind 10 seconds" type="button">
+<span class="material-symbols-outlined text-[20px]">replay_10</span>
+</button>
 <!-- Play/Pause Button for Kanika Voice Memo -->
-<button aria-label="Play voice note" class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-md hover:bg-primary-container active:scale-95 transition-all" id="cassette-play-btn" onclick="toggleVoiceNote()" type="button">
+<button aria-label="Play voice note" class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-md hover:bg-primary-container active:scale-95 transition-all cursor-pointer" id="cassette-play-btn" onclick="toggleVoiceNote()" type="button">
 <span class="material-symbols-outlined text-[22px]" id="cassette-play-icon">play_arrow</span>
+</button>
+<!-- Skip Forward 10s -->
+<button aria-label="Skip forward 10 seconds" class="w-8 h-8 rounded-full flex items-center justify-center text-primary/80 hover:text-primary hover:bg-surface-container-highest active:scale-95 transition-all cursor-pointer" onclick="skipVoiceNote(10)" title="Forward 10 seconds" type="button">
+<span class="material-symbols-outlined text-[20px]">forward_10</span>
 </button>
 <div class="flex flex-col ml-1">
 <span class="font-caption-typewriter text-caption-typewriter text-primary font-bold leading-none" id="cassette-status">Press play to listen</span>
-<span class="font-caption-typewriter text-[11px] text-on-surface-variant mt-1">Recorded by Kanika for Kartik • 128kbps</span>
+<span class="font-caption-typewriter text-[11px] text-on-surface-variant mt-1">Recorded by Kanika for Kartik • 192kbps</span>
 </div>
 </div>
 <!-- Progress bar & Timestamp -->
 <div class="flex items-center gap-space-xs w-full sm:w-auto">
-<div class="h-2 w-full sm:w-44 bg-surface-container-highest rounded-full overflow-hidden cursor-pointer" id="progress-container" onclick="seekVoiceNote(event)">
-<div class="h-full bg-secondary w-0 transition-all duration-300 rounded-full" id="audio-progress-bar"></div>
+<div class="group relative h-5 w-full sm:w-48 flex items-center cursor-pointer select-none py-1 touch-none" id="progress-container">
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden relative">
+<div class="h-full bg-secondary w-0 rounded-full pointer-events-none" id="audio-progress-bar"></div>
 </div>
-<span class="font-caption-typewriter text-caption-typewriter text-on-surface font-semibold tabular-nums" id="audio-timer">00:00 / 02:14</span>
+<!-- Draggable Scrubber Thumb -->
+<div class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 bg-primary border-2 border-white rounded-full shadow-md transition-transform scale-90 group-hover:scale-110 pointer-events-none" id="audio-progress-thumb" style="left: 0%;"></div>
+</div>
+<span class="font-caption-typewriter text-caption-typewriter text-on-surface font-semibold tabular-nums whitespace-nowrap" id="audio-timer">00:00 / 08:57</span>
 </div>
 </div>
 </div>
@@ -530,64 +542,51 @@
     const timerDisplay = document.getElementById('audio-timer');
     const waveformBars = document.querySelectorAll('#cassette-player .waveform-bar');
 
-    let isPlaying = false;
-    let elapsed = 0;
-    const totalDuration = 134; // 2 minutes 14 seconds
-    let voiceInterval = null;
-    let voiceAudioCtx = null;
-    let whisperInterval = null;
-
-    const formatTime = (sec) => `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
-
-    function initVoiceAudio() {
-      if (!voiceAudioCtx) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (AudioContext) voiceAudioCtx = new AudioContext();
-      }
-      if (voiceAudioCtx && voiceAudioCtx.state === 'suspended') {
-        voiceAudioCtx.resume();
-      }
+    let voiceAudio = window.__scrapbookVoiceNoteAudio || null;
+    if (!voiceAudio) {
+      voiceAudio = new Audio('assets/voice_note/kanika_voice_note.m4a');
+      voiceAudio.preload = 'metadata';
+      window.__scrapbookVoiceNoteAudio = voiceAudio;
     }
 
-    // Soft warm voice memo acoustic chime simulation
-    const voiceNotes = [329.63, 392.00, 440.00, 493.88, 523.25, 587.33];
-    function playWhisperTone() {
-      if (!voiceAudioCtx || !isPlaying) return;
-      try {
-        const osc = voiceAudioCtx.createOscillator();
-        const gain = voiceAudioCtx.createGain();
-        const note = voiceNotes[Math.floor(Math.random() * voiceNotes.length)];
-        
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(note, voiceAudioCtx.currentTime);
-        
-        gain.gain.setValueAtTime(0.001, voiceAudioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.02, voiceAudioCtx.currentTime + 0.15);
-        gain.gain.exponentialRampToValueAtTime(0.0001, voiceAudioCtx.currentTime + 1.6);
-        
-        osc.connect(gain);
-        gain.connect(voiceAudioCtx.destination);
-        
-        osc.start();
-        osc.stop(voiceAudioCtx.currentTime + 1.7);
-      } catch(e) {}
-    }
+    const formatTime = (sec) => {
+      if (isNaN(sec) || sec < 0) return "00:00";
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    };
+
+    let animFrame = null;
 
     function updateVoiceDisplay() {
+      const isPlaying = voiceAudio && !voiceAudio.paused && !voiceAudio.ended;
+      const dur = (voiceAudio && voiceAudio.duration && !isNaN(voiceAudio.duration)) ? voiceAudio.duration : 537.6;
+      const cur = (voiceAudio && voiceAudio.currentTime) ? voiceAudio.currentTime : 0;
+
       if (playIcon) playIcon.textContent = isPlaying ? 'pause' : 'play_arrow';
-      if (playerStatus) playerStatus.textContent = isPlaying ? 'Playing voice note... ♡' : 'Press play to listen';
+      if (playerStatus) {
+        if (isPlaying) {
+          playerStatus.textContent = 'Playing voice note... ♡';
+        } else if (cur > 0 && cur < dur - 1) {
+          playerStatus.textContent = 'Paused • Tap to resume ♡';
+        } else {
+          playerStatus.textContent = 'Press play to listen';
+        }
+      }
 
       if (reelLeft) reelLeft.classList.toggle('animate-spin-slow', isPlaying);
       if (reelRight) reelRight.classList.toggle('animate-spin-slow', isPlaying);
 
-      if (progressBar) progressBar.style.width = `${(elapsed / totalDuration) * 100}%`;
-      if (timerDisplay) timerDisplay.textContent = `${formatTime(elapsed)} / 02:14`;
+      const thumb = document.getElementById('audio-progress-thumb');
+      const pct = Math.min(100, (cur / dur) * 100);
+      if (progressBar) progressBar.style.width = `${pct}%`;
+      if (thumb) thumb.style.left = `${pct}%`;
+      if (timerDisplay) timerDisplay.textContent = `${formatTime(cur)} / ${formatTime(dur)}`;
 
-      // Pulsing waveforms when playing
       if (isPlaying) {
         waveformBars.forEach((bar, i) => {
-          const randomHeight = Math.floor(Math.sin(Date.now() / 200 + i) * 10 + 16);
-          bar.style.height = `${Math.max(4, Math.min(30, randomHeight))}px`;
+          const randomHeight = Math.floor(Math.sin(Date.now() / 150 + i * 0.8) * 12 + 18);
+          bar.style.height = `${Math.max(4, Math.min(32, randomHeight))}px`;
         });
       } else {
         const baseHeights = [12, 24, 16, 32, 20, 28, 12, 24, 16, 28, 8];
@@ -597,41 +596,103 @@
       }
     }
 
+    function startWaveformLoop() {
+      if (animFrame) return;
+      function loop() {
+        if (voiceAudio && !voiceAudio.paused) {
+          updateVoiceDisplay();
+          animFrame = requestAnimationFrame(loop);
+        } else {
+          animFrame = null;
+        }
+      }
+      animFrame = requestAnimationFrame(loop);
+    }
+
+    if (voiceAudio && !voiceAudio._boundInPage) {
+      voiceAudio._boundInPage = true;
+      voiceAudio.addEventListener('timeupdate', updateVoiceDisplay);
+      voiceAudio.addEventListener('loadedmetadata', updateVoiceDisplay);
+      voiceAudio.addEventListener('play', () => {
+        if (window.__scrapbookPlayerAudio && !window.__scrapbookPlayerAudio.paused) {
+          window.__scrapbookPlayerAudio.pause();
+        }
+        startWaveformLoop();
+        updateVoiceDisplay();
+      });
+      voiceAudio.addEventListener('pause', updateVoiceDisplay);
+      voiceAudio.addEventListener('ended', () => {
+        voiceAudio.currentTime = 0;
+        updateVoiceDisplay();
+        if (playerStatus) playerStatus.textContent = 'Finished listening ♡ • Tap to replay';
+      });
+    }
+
     window.toggleVoiceNote = function() {
-      if (isPlaying) {
-        isPlaying = false;
-        if (voiceInterval) { clearInterval(voiceInterval); voiceInterval = null; }
-        if (whisperInterval) { clearInterval(whisperInterval); whisperInterval = null; }
-        updateVoiceDisplay();
+      if (!voiceAudio) return;
+      if (voiceAudio.paused) {
+        if (window.__scrapbookPlayerAudio && !window.__scrapbookPlayerAudio.paused) {
+          window.__scrapbookPlayerAudio.pause();
+        }
+        voiceAudio.play().then(() => {
+          startWaveformLoop();
+          updateVoiceDisplay();
+        }).catch(err => console.log('Voice note play error:', err));
       } else {
-        initVoiceAudio();
-        isPlaying = true;
+        voiceAudio.pause();
         updateVoiceDisplay();
-        if (!voiceInterval) {
-          voiceInterval = setInterval(() => {
-            elapsed += 1;
-            if (elapsed >= totalDuration) {
-              elapsed = 0;
-              window.toggleVoiceNote();
-            } else {
-              updateVoiceDisplay();
-            }
-          }, 1000);
-        }
-        if (!whisperInterval) {
-          whisperInterval = setInterval(playWhisperTone, 1100);
-        }
       }
     };
 
-    window.seekVoiceNote = function(e) {
+    window.skipVoiceNote = function(sec) {
+      if (!voiceAudio) return;
+      const dur = (voiceAudio.duration && !isNaN(voiceAudio.duration)) ? voiceAudio.duration : 537.6;
+      voiceAudio.currentTime = Math.max(0, Math.min(dur, (voiceAudio.currentTime || 0) + sec));
+      updateVoiceDisplay();
+    };
+
+    function handleSeekFromEvent(e) {
+      if (!voiceAudio) return;
       const container = document.getElementById('progress-container');
       if (!container) return;
       const rect = container.getBoundingClientRect();
       const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      elapsed = Math.floor(totalDuration * percent);
+      const dur = (voiceAudio.duration && !isNaN(voiceAudio.duration)) ? voiceAudio.duration : 537.6;
+      voiceAudio.currentTime = dur * percent;
       updateVoiceDisplay();
+    }
+
+    window.seekVoiceNote = function(e) {
+      handleSeekFromEvent(e);
     };
+
+    // Interactive Drag & Scrubbing
+    let isDragging = false;
+    const container = document.getElementById('progress-container');
+    if (container && !container._boundPointer) {
+      container._boundPointer = true;
+      container.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        try { container.setPointerCapture(e.pointerId); } catch(err) {}
+        handleSeekFromEvent(e);
+      });
+      container.addEventListener('pointermove', (e) => {
+        if (isDragging) {
+          handleSeekFromEvent(e);
+        }
+      });
+      const stopDrag = (e) => {
+        if (isDragging) {
+          isDragging = false;
+          try { container.releasePointerCapture(e.pointerId); } catch(err) {}
+        }
+      };
+      container.addEventListener('pointerup', stopDrag);
+      container.addEventListener('pointercancel', stopDrag);
+    }
+
+    // Initial display sync
+    updateVoiceDisplay();
 
     // Guestbook Note Handler
     window.handleReplySubmit = function() {
@@ -661,4 +722,4 @@
     updateVoiceDisplay();
   })();
 </script>
-</div></main><aside class="fixed bottom-3 sm:bottom-6 right-3 sm:right-6 z-40 flex items-center max-w-[calc(100vw-1.5rem)]"><div class="relative bg-surface-container-lowest/95 backdrop-blur-md rounded-full px-space-md py-space-xs shadow-[0_10px_24px_-4px_rgba(60,40,35,0.18),0_4px_8px_-2px_rgba(60,40,35,0.08)] flex items-center gap-space-sm"><div class="absolute -top-3 left-4 bg-tertiary-fixed text-on-tertiary-fixed font-caption-typewriter text-body-sm px-2 py-0.5 rounded-sm transform -rotate-3 shadow-[0_2px_4px_rgba(43,35,32,0.15)] flex items-center gap-1"><span>our song</span><span class="material-symbols-outlined text-[12px] text-secondary">music_note</span></div><div class="relative flex items-center justify-center w-8 h-8 rounded-full bg-tertiary text-on-tertiary animate-spin-slow shadow-inner"><div class="w-2.5 h-2.5 rounded-full bg-surface-container-lowest"></div></div><div class="flex flex-col pr-space-xs"><div class="flex items-center gap-1"><span class="font-caption-typewriter text-caption-typewriter text-primary font-bold leading-tight">Our Soundtrack</span><span class="font-caption-typewriter text-caption-typewriter text-on-surface-variant text-[11px]">• Kanika's playlist</span></div><div class="flex items-center gap-1.5 mt-0.5"><div class="w-20 sm:w-28 h-1 bg-surface-container rounded-full overflow-hidden"><div class="w-3/5 h-full bg-secondary rounded-full"></div></div><span class="font-caption-typewriter text-[10px] text-on-surface-variant">02:14</span></div></div><div class="flex items-center gap-1"><button aria-label="Previous track" class="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">skip_previous</span></button><button aria-label="Play or pause" class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm hover:scale-105 transition-transform" type="button"><span class="material-symbols-outlined text-[18px]">pause</span></button><button aria-label="Next track" class="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">skip_next</span></button></div></div></aside><footer class="w-full bg-surface-container-low py-space-2xl pb-28 sm:pb-space-2xl mt-space-3xl relative shadow-[0_-1px_8px_rgba(0,0,0,0.03)]"><div class="max-w-[1200px] mx-auto px-gutter-mobile lg:px-gutter-desktop flex flex-col sm:flex-row items-center justify-between gap-space-md text-center sm:text-left"><div class="flex flex-col"><span class="font-headline-md text-headline-md text-primary">To Kartik, with all my love</span><span class="font-caption-typewriter text-caption-typewriter text-on-surface-variant">Handcrafted with memories, Polaroid snapshots &amp; forever dreams</span></div><div class="flex items-center gap-space-sm font-label-caps text-label-caps uppercase text-on-surface-variant"><span class="material-symbols-outlined text-secondary text-[16px]">auto_awesome</span><span>Keep this memory box safe forever</span></div></div></footer><script src="scrapbook-player.js"></script></body></html>
+</div></main><aside class="fixed bottom-3 sm:bottom-6 right-3 sm:right-6 z-40 flex items-center max-w-[calc(100vw-1.5rem)]"><div class="relative bg-surface-container-lowest/95 backdrop-blur-md rounded-full px-space-md py-space-xs shadow-[0_10px_24px_-4px_rgba(60,40,35,0.18),0_4px_8px_-2px_rgba(60,40,35,0.08)] flex items-center gap-space-sm"><div class="absolute -top-3 left-4 bg-tertiary-fixed text-on-tertiary-fixed font-caption-typewriter text-body-sm px-2 py-0.5 rounded-sm transform -rotate-3 shadow-[0_2px_4px_rgba(43,35,32,0.15)] flex items-center gap-1"><span>our song</span><span class="material-symbols-outlined text-[12px] text-secondary">music_note</span></div><div class="relative flex items-center justify-center w-8 h-8 rounded-full bg-tertiary text-on-tertiary animate-spin-slow shadow-inner"><div class="w-2.5 h-2.5 rounded-full bg-surface-container-lowest"></div></div><div class="flex flex-col pr-space-xs"><div class="flex items-center gap-1"><span class="font-caption-typewriter text-caption-typewriter text-primary font-bold leading-tight">Our Soundtrack</span><span class="font-caption-typewriter text-caption-typewriter text-on-surface-variant text-[11px]">• Kanika's playlist</span></div><div class="flex items-center gap-1.5 mt-0.5"><div class="w-20 sm:w-28 h-1 bg-surface-container rounded-full overflow-hidden"><div class="w-3/5 h-full bg-secondary rounded-full"></div></div><span class="font-caption-typewriter text-[10px] text-on-surface-variant">02:14</span></div></div><div class="flex items-center gap-1"><button aria-label="Previous track" class="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">skip_previous</span></button><button aria-label="Play or pause" class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm hover:scale-105 transition-transform" type="button"><span class="material-symbols-outlined text-[18px]">pause</span></button><button aria-label="Next track" class="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">skip_next</span></button></div></div></aside><footer class="w-full bg-surface-container-low py-space-2xl pb-28 sm:pb-space-2xl mt-space-3xl relative shadow-[0_-1px_8px_rgba(0,0,0,0.03)]"><div class="max-w-[1200px] mx-auto px-gutter-mobile lg:px-gutter-desktop flex flex-col sm:flex-row items-center justify-between gap-space-md text-center sm:text-left"><div class="flex flex-col"><span class="font-headline-md text-headline-md text-primary">To Kartik, with all my love</span><span class="font-caption-typewriter text-caption-typewriter text-on-surface-variant">Handcrafted with memories, Polaroid snapshots &amp; forever dreams</span></div><div class="flex items-center gap-space-sm font-label-caps text-label-caps uppercase text-on-surface-variant"><span class="material-symbols-outlined text-secondary text-[16px]">auto_awesome</span><span>Keep this memory box safe forever</span></div></div></footer><script src="scrapbook-player.js?v=2026"></script></body></html>

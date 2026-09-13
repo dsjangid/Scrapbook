@@ -547,6 +547,112 @@
 </div>
 </div>
 </section>
+
+<!-- CHAPTER FINALE: A Little Film For You (Short Film Experience) -->
+<section class="mt-space-2xl bg-surface-container-lowest/95 backdrop-blur-md p-space-md sm:p-space-xl rounded-lg shadow-xl border-t-4 border-primary relative overflow-hidden transform -rotate-[0.5deg] hover:rotate-0 transition-transform duration-300" id="short-film-section">
+  <!-- Washi tape decoration (top center) -->
+  <div class="absolute -top-3 left-1/2 -translate-x-1/2 w-44 h-6 bg-secondary-fixed/90 backdrop-blur-xs transform rotate-1 shadow-sm flex items-center justify-center pointer-events-none">
+    <span class="font-label-caps text-[9px] text-on-secondary-fixed tracking-widest uppercase font-bold">ONE LAST SURPRISE</span>
+  </div>
+
+  <div class="flex flex-col gap-space-md pt-2">
+    <!-- Header with typewriter dedication -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-surface-variant/40 pb-space-sm">
+      <div class="flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+          <span class="material-symbols-outlined text-[26px]">movie</span>
+        </div>
+        <div>
+          <span class="font-label-caps text-[11px] text-secondary uppercase tracking-widest font-semibold block">A Special Memory In Motion</span>
+          <h3 class="font-headline-lg text-headline-lg text-primary leading-tight">Our Short Film ♡</h3>
+        </div>
+      </div>
+      <div class="flex items-center gap-1 bg-surface-container px-3 py-1 rounded-full text-on-surface-variant font-caption-typewriter text-[11px]">
+        <span class="material-symbols-outlined text-secondary text-[14px]">videocam</span>
+        <span>Dedicated to Kartik</span>
+      </div>
+    </div>
+
+    <!-- Short Note to Kartik & Play Button -->
+    <div class="bg-surface-container/70 p-space-md sm:p-space-lg rounded-md border-l-4 border-secondary flex flex-col sm:flex-row items-start sm:items-center justify-between gap-space-md shadow-inner">
+      <div class="font-body-md text-on-surface leading-relaxed max-w-xl">
+        <p class="font-caption-typewriter text-[13px] text-on-surface">
+          "Before you wrap up this scrapbook, I put together our favourite laughs, candid smiles, and little moments into a short film just for you. Grab your earphones, press play, and let’s relive all of it."
+        </p>
+        <span class="font-title-script text-[20px] text-primary block mt-2">— with all my heart, Kanika ♡</span>
+      </div>
+
+      <!-- Play Trigger Button -->
+      <button id="film-play-trigger-btn" onclick="openAndPlayShortFilm()" type="button" class="group relative shrink-0 bg-primary hover:bg-primary-container text-on-primary font-caption-typewriter text-body-sm font-bold px-space-lg py-3 rounded-full shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center gap-2 cursor-pointer">
+        <span class="material-symbols-outlined text-[24px] group-hover:scale-110 transition-transform">play_circle</span>
+        <span>Play Our Film</span>
+        <span class="w-2 h-2 rounded-full bg-secondary-fixed animate-ping"></span>
+      </button>
+    </div>
+
+    <!-- Theatrical Video Container -->
+    <div id="film-theater-container" class="relative rounded-lg overflow-hidden bg-neutral-950 border-2 border-surface-variant/60 shadow-2xl transition-all duration-500 mt-2">
+      
+      <!-- Filmstrip Frame Header -->
+      <div class="bg-neutral-900 px-4 py-2 flex items-center justify-between border-b border-white/10">
+        <div class="flex items-center gap-1.5 text-white/50 text-[10px] font-caption-typewriter uppercase tracking-wider">
+          <span class="w-2.5 h-2.5 rounded-xs bg-white/20 border border-white/40 inline-block"></span>
+          <span class="w-2.5 h-2.5 rounded-xs bg-white/20 border border-white/40 inline-block"></span>
+          <span class="w-2.5 h-2.5 rounded-xs bg-white/20 border border-white/40 inline-block"></span>
+          <span class="ml-1 text-white/80 font-bold">KARTIK & KANIKA • 19TH BIRTHDAY SPECIAL FILM</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="toggleFilmFullscreen()" type="button" class="text-white/60 hover:text-white transition-colors p-1 flex items-center gap-1 font-caption-typewriter text-[11px] cursor-pointer" title="Fullscreen">
+            <span class="material-symbols-outlined text-[18px]">fullscreen</span>
+            <span class="hidden sm:inline">Fullscreen</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Video Element & Overlay -->
+      <div class="relative aspect-video w-full bg-black flex items-center justify-center group/video">
+        <video 
+          id="scrapbook-short-film" 
+          class="w-full h-full object-contain" 
+          controls 
+          preload="metadata" 
+          playsinline 
+          poster="assets/photos/couple_outdoor_scenic.jpg">
+          <source src="assets/short_film/birthday_film.mp4" type="video/mp4">
+          <source src="assets/short_film/WhatsApp Video 2026-09-13 at 8.33.56 AM.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+
+        <!-- Big Center Play Overlay (visible before playing) -->
+        <div id="video-poster-overlay" onclick="startFilmPlayback()" class="absolute inset-0 bg-neutral-950/40 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 cursor-pointer group-hover/video:bg-neutral-950/30 transition-all">
+          <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-2xl transform group-hover/video:scale-110 transition-transform">
+            <span class="material-symbols-outlined text-[38px] sm:text-[46px] ml-1">play_arrow</span>
+          </div>
+          <div class="bg-black/70 backdrop-blur-md px-4 py-1.5 rounded-full text-white font-caption-typewriter text-body-sm text-center shadow-lg flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-secondary text-[16px]">movie</span>
+            <span>Tap to play short film ♡</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filmstrip Bottom Bar -->
+      <div class="bg-neutral-900 px-4 py-2.5 flex items-center justify-between border-t border-white/10 text-white/70 font-caption-typewriter text-[11px]">
+        <div class="flex items-center gap-1.5 text-secondary-fixed">
+          <span class="material-symbols-outlined text-[15px]">favorite</span>
+          <span>Made with all love for Kartik</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <button onclick="restartFilm()" type="button" class="hover:text-white transition-colors flex items-center gap-1 cursor-pointer">
+            <span class="material-symbols-outlined text-[15px]">replay</span>
+            <span>Replay</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
 </div>
 <!-- Confetti Canvas Particle Container -->
 <canvas class="fixed inset-0 pointer-events-none z-50 w-full h-full" id="confetti-canvas"></canvas>
@@ -682,4 +788,73 @@
     }
     requestAnimationFrame(animate);
   }
-</script></main><aside class="fixed bottom-3 sm:bottom-6 right-3 sm:right-6 z-40 flex items-center max-w-[calc(100vw-1.5rem)]"><div class="relative bg-surface-container-lowest/95 backdrop-blur-md rounded-full px-space-md py-space-xs shadow-[0_10px_24px_-4px_rgba(60,40,35,0.18),0_4px_8px_-2px_rgba(60,40,35,0.08)] flex items-center gap-space-sm"><div class="absolute -top-3 left-4 bg-tertiary-fixed text-on-tertiary-fixed font-caption-typewriter text-body-sm px-2 py-0.5 rounded-sm transform -rotate-3 shadow-[0_2px_4px_rgba(43,35,32,0.15)] flex items-center gap-1"><span>our song</span><span class="material-symbols-outlined text-[12px] text-secondary">music_note</span></div><div class="relative flex items-center justify-center w-8 h-8 rounded-full bg-tertiary text-on-tertiary animate-spin-slow shadow-inner"><div class="w-2.5 h-2.5 rounded-full bg-surface-container-lowest"></div></div><div class="flex flex-col pr-space-xs"><div class="flex items-center gap-1"><span class="font-caption-typewriter text-caption-typewriter text-primary font-bold leading-tight">Our Soundtrack</span><span class="font-caption-typewriter text-caption-typewriter text-on-surface-variant text-[11px]">• Kanika's playlist</span></div><div class="flex items-center gap-1.5 mt-0.5"><div class="w-20 sm:w-28 h-1 bg-surface-container rounded-full overflow-hidden"><div class="w-3/5 h-full bg-secondary rounded-full"></div></div><span class="font-caption-typewriter text-[10px] text-on-surface-variant">02:14</span></div></div><div class="flex items-center gap-1"><button aria-label="Previous track" class="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">skip_previous</span></button><button aria-label="Play or pause" class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm hover:scale-105 transition-transform" type="button"><span class="material-symbols-outlined text-[18px]">pause</span></button><button aria-label="Next track" class="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">skip_next</span></button></div></div></aside><footer class="w-full bg-surface-container-low py-space-2xl pb-28 sm:pb-space-2xl mt-space-3xl relative shadow-[0_-1px_8px_rgba(0,0,0,0.03)]"><div class="max-w-[1200px] mx-auto px-gutter-mobile lg:px-gutter-desktop flex flex-col sm:flex-row items-center justify-between gap-space-md text-center sm:text-left"><div class="flex flex-col"><span class="font-headline-md text-headline-md text-primary">To Kartik, with all my love</span><span class="font-caption-typewriter text-caption-typewriter text-on-surface-variant">Handcrafted with memories, Polaroid snapshots &amp; forever dreams</span></div><div class="flex items-center gap-space-sm font-label-caps text-label-caps uppercase text-on-surface-variant"><span class="material-symbols-outlined text-secondary text-[16px]">auto_awesome</span><span>Keep this memory box safe forever</span></div></div></footer><script src="scrapbook-player.js"></script></body></html>
+
+  // Short Film Interactive Logic
+  function startFilmPlayback() {
+    const video = document.getElementById('scrapbook-short-film');
+    const overlay = document.getElementById('video-poster-overlay');
+    if (!video) return;
+
+    if (window.__scrapbookPlayerAudio && !window.__scrapbookPlayerAudio.paused) {
+      window.__scrapbookPlayerAudio.pause();
+    }
+    if (window.__scrapbookVoiceNoteAudio && !window.__scrapbookVoiceNoteAudio.paused) {
+      window.__scrapbookVoiceNoteAudio.pause();
+    }
+
+    if (overlay) overlay.style.display = 'none';
+
+    video.play().catch(err => console.log('Video play error:', err));
+  }
+
+  function openAndPlayShortFilm() {
+    const section = document.getElementById('short-film-section');
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    setTimeout(() => {
+      startFilmPlayback();
+    }, 450);
+  }
+
+  function restartFilm() {
+    const video = document.getElementById('scrapbook-short-film');
+    if (video) {
+      video.currentTime = 0;
+      startFilmPlayback();
+    }
+  }
+
+  function toggleFilmFullscreen() {
+    const video = document.getElementById('scrapbook-short-film');
+    if (!video) return;
+    if (!document.fullscreenElement) {
+      if (video.requestFullscreen) video.requestFullscreen();
+      else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+    } else {
+      if (document.exitFullscreen) document.exitFullscreen();
+    }
+  }
+
+  // Event listener on video
+  (function initFilmListeners() {
+    const video = document.getElementById('scrapbook-short-film');
+    const overlay = document.getElementById('video-poster-overlay');
+    if (video && overlay) {
+      video.addEventListener('play', () => {
+        if (window.__scrapbookPlayerAudio && !window.__scrapbookPlayerAudio.paused) {
+          window.__scrapbookPlayerAudio.pause();
+        }
+        overlay.style.display = 'none';
+      });
+      video.addEventListener('pause', () => {
+        if (video.currentTime < 1) {
+          overlay.style.display = 'flex';
+        }
+      });
+      video.addEventListener('ended', () => {
+        overlay.style.display = 'flex';
+      });
+    }
+  })();
+</script></main><aside class="fixed bottom-3 sm:bottom-6 right-3 sm:right-6 z-40 flex items-center max-w-[calc(100vw-1.5rem)]"><div class="relative bg-surface-container-lowest/95 backdrop-blur-md rounded-full px-space-md py-space-xs shadow-[0_10px_24px_-4px_rgba(60,40,35,0.18),0_4px_8px_-2px_rgba(60,40,35,0.08)] flex items-center gap-space-sm"><div class="absolute -top-3 left-4 bg-tertiary-fixed text-on-tertiary-fixed font-caption-typewriter text-body-sm px-2 py-0.5 rounded-sm transform -rotate-3 shadow-[0_2px_4px_rgba(43,35,32,0.15)] flex items-center gap-1"><span>our song</span><span class="material-symbols-outlined text-[12px] text-secondary">music_note</span></div><div class="relative flex items-center justify-center w-8 h-8 rounded-full bg-tertiary text-on-tertiary animate-spin-slow shadow-inner"><div class="w-2.5 h-2.5 rounded-full bg-surface-container-lowest"></div></div><div class="flex flex-col pr-space-xs"><div class="flex items-center gap-1"><span class="font-caption-typewriter text-caption-typewriter text-primary font-bold leading-tight">Our Soundtrack</span><span class="font-caption-typewriter text-caption-typewriter text-on-surface-variant text-[11px]">• Kanika's playlist</span></div><div class="flex items-center gap-1.5 mt-0.5"><div class="w-20 sm:w-28 h-1 bg-surface-container rounded-full overflow-hidden"><div class="w-3/5 h-full bg-secondary rounded-full"></div></div><span class="font-caption-typewriter text-[10px] text-on-surface-variant">02:14</span></div></div><div class="flex items-center gap-1"><button aria-label="Previous track" class="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">skip_previous</span></button><button aria-label="Play or pause" class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm hover:scale-105 transition-transform" type="button"><span class="material-symbols-outlined text-[18px]">pause</span></button><button aria-label="Next track" class="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">skip_next</span></button></div></div></aside><footer class="w-full bg-surface-container-low py-space-2xl pb-28 sm:pb-space-2xl mt-space-3xl relative shadow-[0_-1px_8px_rgba(0,0,0,0.03)]"><div class="max-w-[1200px] mx-auto px-gutter-mobile lg:px-gutter-desktop flex flex-col sm:flex-row items-center justify-between gap-space-md text-center sm:text-left"><div class="flex flex-col"><span class="font-headline-md text-headline-md text-primary">To Kartik, with all my love</span><span class="font-caption-typewriter text-caption-typewriter text-on-surface-variant">Handcrafted with memories, Polaroid snapshots &amp; forever dreams</span></div><div class="flex items-center gap-space-sm font-label-caps text-label-caps uppercase text-on-surface-variant"><span class="material-symbols-outlined text-secondary text-[16px]">auto_awesome</span><span>Keep this memory box safe forever</span></div></div></footer><script src="scrapbook-player.js?v=2026"></script></body></html>

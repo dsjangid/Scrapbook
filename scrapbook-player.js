@@ -49,6 +49,7 @@
   // Real HTML5 Audio Element (persists in memory across SPA transitions)
   const audio = new Audio();
   audio.preload = "auto";
+  window.__scrapbookPlayerAudio = audio;
 
   // Restore state from sessionStorage if available
   try {
@@ -399,6 +400,9 @@
   }
 
   function loadTrack(idx, autoPlay = true) {
+    if (window.__scrapbookVoiceNoteAudio && !window.__scrapbookVoiceNoteAudio.paused) {
+      window.__scrapbookVoiceNoteAudio.pause();
+    }
     currentTrackIdx = (idx + TRACKS.length) % TRACKS.length;
     persistAudioState();
     audio.src = TRACKS[currentTrackIdx].src;
@@ -414,6 +418,9 @@
 
   function togglePlay() {
     if (audio.paused) {
+      if (window.__scrapbookVoiceNoteAudio && !window.__scrapbookVoiceNoteAudio.paused) {
+        window.__scrapbookVoiceNoteAudio.pause();
+      }
       audio.play().then(() => {
         persistAudioState();
         updateDisplay();
@@ -854,42 +861,14 @@
     };
 
     // 4. LETTERS.HTML: Cassette Voice Note & Guestbook
-    let isVoicePlaying = false;
-    let voiceElapsed = 0;
-    const voiceTotalDuration = 134;
-
-    function initVoiceAudio() {
-      if (!activeVoiceAudioCtx) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (AudioContext) activeVoiceAudioCtx = new AudioContext();
-      }
-      if (activeVoiceAudioCtx && activeVoiceAudioCtx.state === 'suspended') {
-        activeVoiceAudioCtx.resume();
-      }
+    let voiceNote = window.__scrapbookVoiceNoteAudio || null;
+    if (!voiceNote) {
+      voiceNote = new Audio('assets/voice_note/kanika_voice_note.m4a');
+      voiceNote.preload = 'metadata';
+      window.__scrapbookVoiceNoteAudio = voiceNote;
     }
 
-    const voiceNotes = [329.63, 392.00, 440.00, 493.88, 523.25, 587.33];
-    function playWhisperTone() {
-      if (!activeVoiceAudioCtx || !isVoicePlaying) return;
-      try {
-        const osc = activeVoiceAudioCtx.createOscillator();
-        const gain = activeVoiceAudioCtx.createGain();
-        const note = voiceNotes[Math.floor(Math.random() * voiceNotes.length)];
-        
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(note, activeVoiceAudioCtx.currentTime);
-        
-        gain.gain.setValueAtTime(0.001, activeVoiceAudioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.02, activeVoiceAudioCtx.currentTime + 0.15);
-        gain.gain.exponentialRampToValueAtTime(0.0001, activeVoiceAudioCtx.currentTime + 1.6);
-        
-        osc.connect(gain);
-        gain.connect(activeVoiceAudioCtx.destination);
-        
-        osc.start();
-        osc.stop(activeVoiceAudioCtx.currentTime + 1.7);
-      } catch(e) {}
-    }
+    let voiceWaveAnim = null;
 
     function updateVoiceDisplay() {
       const playIcon = document.getElementById('cassette-play-icon');
@@ -900,19 +879,34 @@
       const timerDisplay = document.getElementById('audio-timer');
       const waveformBars = document.querySelectorAll('#cassette-player .waveform-bar');
 
-      if (playIcon) playIcon.textContent = isVoicePlaying ? 'pause' : 'play_arrow';
-      if (playerStatus) playerStatus.textContent = isVoicePlaying ? 'Playing voice note... ♡' : 'Press play to listen';
+      const isPlaying = voiceNote && !voiceNote.paused && !voiceNote.ended;
+      const dur = (voiceNote && voiceNote.duration && !isNaN(voiceNote.duration)) ? voiceNote.duration : 537.6;
+      const cur = (voiceNote && voiceNote.currentTime) ? voiceNote.currentTime : 0;
 
-      if (reelLeft) reelLeft.classList.toggle('animate-spin-slow', isVoicePlaying);
-      if (reelRight) reelRight.classList.toggle('animate-spin-slow', isVoicePlaying);
+      if (playIcon) playIcon.textContent = isPlaying ? 'pause' : 'play_arrow';
+      if (playerStatus) {
+        if (isPlaying) {
+          playerStatus.textContent = 'Playing voice note... ♡';
+        } else if (cur > 0 && cur < dur - 1) {
+          playerStatus.textContent = 'Paused • Tap to resume ♡';
+        } else {
+          playerStatus.textContent = 'Press play to listen';
+        }
+      }
 
-      if (progressBar) progressBar.style.width = `${(voiceElapsed / voiceTotalDuration) * 100}%`;
-      if (timerDisplay) timerDisplay.textContent = `${formatTime(voiceElapsed)} / 02:14`;
+      if (reelLeft) reelLeft.classList.toggle('animate-spin-slow', isPlaying);
+      if (reelRight) reelRight.classList.toggle('animate-spin-slow', isPlaying);
 
-      if (isVoicePlaying) {
+      const thumb = document.getElementById('audio-progress-thumb');
+      const pct = Math.min(100, (cur / dur) * 100);
+      if (progressBar) progressBar.style.width = `${pct}%`;
+      if (thumb) thumb.style.left = `${pct}%`;
+      if (timerDisplay) timerDisplay.textContent = `${formatTime(cur)} / ${formatTime(dur)}`;
+
+      if (isPlaying) {
         waveformBars.forEach((bar, i) => {
-          const randomHeight = Math.floor(Math.sin(Date.now() / 200 + i) * 10 + 16);
-          bar.style.height = `${Math.max(4, Math.min(30, randomHeight))}px`;
+          const randomHeight = Math.floor(Math.sin(Date.now() / 150 + i * 0.8) * 12 + 18);
+          bar.style.height = `${Math.max(4, Math.min(32, randomHeight))}px`;
         });
       } else {
         const baseHeights = [12, 24, 16, 32, 20, 28, 12, 24, 16, 28, 8];
@@ -922,41 +916,107 @@
       }
     }
 
+    function startVoiceWaveLoop() {
+      if (voiceWaveAnim) return;
+      function loop() {
+        if (voiceNote && !voiceNote.paused) {
+          updateVoiceDisplay();
+          voiceWaveAnim = requestAnimationFrame(loop);
+        } else {
+          voiceWaveAnim = null;
+        }
+      }
+      voiceWaveAnim = requestAnimationFrame(loop);
+    }
+
+    if (voiceNote && !voiceNote._boundInRouter) {
+      voiceNote._boundInRouter = true;
+      voiceNote.addEventListener('timeupdate', updateVoiceDisplay);
+      voiceNote.addEventListener('loadedmetadata', updateVoiceDisplay);
+      voiceNote.addEventListener('play', () => {
+        if (audio && !audio.paused) {
+          audio.pause();
+          persistAudioState();
+          updateDisplay();
+        }
+        startVoiceWaveLoop();
+        updateVoiceDisplay();
+      });
+      voiceNote.addEventListener('pause', updateVoiceDisplay);
+      voiceNote.addEventListener('ended', () => {
+        voiceNote.currentTime = 0;
+        updateVoiceDisplay();
+        const playerStatus = document.getElementById('cassette-status');
+        if (playerStatus) playerStatus.textContent = 'Finished listening ♡ • Tap to replay';
+      });
+    }
+
     window.toggleVoiceNote = function() {
-      if (isVoicePlaying) {
-        isVoicePlaying = false;
-        if (activeVoiceInterval) { clearInterval(activeVoiceInterval); activeVoiceInterval = null; }
-        if (activeWhisperInterval) { clearInterval(activeWhisperInterval); activeWhisperInterval = null; }
-        updateVoiceDisplay();
+      if (!voiceNote) return;
+      if (voiceNote.paused) {
+        if (audio && !audio.paused) {
+          audio.pause();
+          persistAudioState();
+          updateDisplay();
+        }
+        voiceNote.play().then(() => {
+          startVoiceWaveLoop();
+          updateVoiceDisplay();
+        }).catch(err => console.log('Voice note play error:', err));
       } else {
-        initVoiceAudio();
-        isVoicePlaying = true;
+        voiceNote.pause();
         updateVoiceDisplay();
-        if (!activeVoiceInterval) {
-          activeVoiceInterval = setInterval(() => {
-            voiceElapsed += 1;
-            if (voiceElapsed >= voiceTotalDuration) {
-              voiceElapsed = 0;
-              window.toggleVoiceNote();
-            } else {
-              updateVoiceDisplay();
-            }
-          }, 1000);
-        }
-        if (!activeWhisperInterval) {
-          activeWhisperInterval = setInterval(playWhisperTone, 1100);
-        }
       }
     };
 
-    window.seekVoiceNote = function(e) {
+    window.skipVoiceNote = function(sec) {
+      if (!voiceNote) return;
+      const dur = (voiceNote.duration && !isNaN(voiceNote.duration)) ? voiceNote.duration : 537.6;
+      voiceNote.currentTime = Math.max(0, Math.min(dur, (voiceNote.currentTime || 0) + sec));
+      updateVoiceDisplay();
+    };
+
+    function handleSeekFromEvent(e) {
+      if (!voiceNote) return;
       const container = document.getElementById('progress-container');
       if (!container) return;
       const rect = container.getBoundingClientRect();
       const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      voiceElapsed = Math.floor(voiceTotalDuration * percent);
+      const dur = (voiceNote.duration && !isNaN(voiceNote.duration)) ? voiceNote.duration : 537.6;
+      voiceNote.currentTime = dur * percent;
       updateVoiceDisplay();
+    }
+
+    window.seekVoiceNote = function(e) {
+      handleSeekFromEvent(e);
     };
+
+    // Interactive Drag & Scrubbing
+    let isDragging = false;
+    const progressEl = document.getElementById('progress-container');
+    if (progressEl && !progressEl._boundPointer) {
+      progressEl._boundPointer = true;
+      progressEl.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        try { progressEl.setPointerCapture(e.pointerId); } catch(err) {}
+        handleSeekFromEvent(e);
+      });
+      progressEl.addEventListener('pointermove', (e) => {
+        if (isDragging) {
+          handleSeekFromEvent(e);
+        }
+      });
+      const stopDrag = (e) => {
+        if (isDragging) {
+          isDragging = false;
+          try { progressEl.releasePointerCapture(e.pointerId); } catch(err) {}
+        }
+      };
+      progressEl.addEventListener('pointerup', stopDrag);
+      progressEl.addEventListener('pointercancel', stopDrag);
+    }
+
+    updateVoiceDisplay();
 
     window.handleReplySubmit = function() {
       const input = document.getElementById('reply-input');
@@ -1109,6 +1169,78 @@
       }
       requestAnimationFrame(animate);
     };
+
+    // Short Film Handlers in SPA
+    window.startFilmPlayback = function() {
+      const video = document.getElementById('scrapbook-short-film');
+      const overlay = document.getElementById('video-poster-overlay');
+      if (!video) return;
+
+      if (audio && !audio.paused) {
+        audio.pause();
+        persistAudioState();
+        updateDisplay();
+      }
+      if (window.__scrapbookVoiceNoteAudio && !window.__scrapbookVoiceNoteAudio.paused) {
+        window.__scrapbookVoiceNoteAudio.pause();
+      }
+
+      if (overlay) overlay.style.display = 'none';
+
+      video.play().catch(err => console.log('Video play error:', err));
+    };
+
+    window.openAndPlayShortFilm = function() {
+      const section = document.getElementById('short-film-section');
+      if (section) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      setTimeout(() => {
+        window.startFilmPlayback();
+      }, 450);
+    };
+
+    window.restartFilm = function() {
+      const video = document.getElementById('scrapbook-short-film');
+      if (video) {
+        video.currentTime = 0;
+        window.startFilmPlayback();
+      }
+    };
+
+    window.toggleFilmFullscreen = function() {
+      const video = document.getElementById('scrapbook-short-film');
+      if (!video) return;
+      if (!document.fullscreenElement) {
+        if (video.requestFullscreen) video.requestFullscreen();
+        else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    };
+
+    // Attach video event listeners if present
+    const filmVideo = document.getElementById('scrapbook-short-film');
+    const filmOverlay = document.getElementById('video-poster-overlay');
+    if (filmVideo && filmOverlay && !filmVideo._boundEvents) {
+      filmVideo._boundEvents = true;
+      filmVideo.addEventListener('play', () => {
+        if (audio && !audio.paused) {
+          audio.pause();
+          persistAudioState();
+          updateDisplay();
+        }
+        filmOverlay.style.display = 'none';
+      });
+      filmVideo.addEventListener('pause', () => {
+        if (filmVideo.currentTime < 1) {
+          filmOverlay.style.display = 'flex';
+        }
+      });
+      filmVideo.addEventListener('ended', () => {
+        filmOverlay.style.display = 'flex';
+      });
+    }
   }
 
   // =======================================================
